@@ -594,25 +594,27 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
 
             switch (castResult)
             {
+                case CAST_OK:
+                {
+                    if (action.cast.castFlags & CAST_COMBAT_MOVE)
+                        CombatMovement(false, action);
+                    break;
+                }
                 case CAST_FAIL_POWER:
                 case CAST_FAIL_TOO_FAR:
                 {
-                    // Melee current victim if flag not set
                     if (!(action.cast.castFlags & CAST_NO_MELEE_IF_OOM))
                     {
-                        switch (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType())
-                        {
-                            case CHASE_MOTION_TYPE:
-                            case FOLLOW_MOTION_TYPE:
-                                m_attackDistance = 0.0f;
-                                m_attackAngle = 0.0f;
-
-                                m_creature->GetMotionMaster()->Clear(false);
-                                m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim(), m_attackDistance, m_attackAngle);
-                                break;
-                            default:
-                                break;
-                        }
+                        CombatMovement(true, action);
+                        break;
+                    }
+                }
+                case CAST_FAIL_TOO_CLOSE:
+                case CAST_FAIL_NO_LOS:
+                {
+                    if (action.cast.castFlags & CAST_COMBAT_MOVE)
+                    {
+                        CombatMovement(true, action);
                     }
                     break;
                 }
@@ -941,6 +943,44 @@ void CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
         {
             m_creature->SetStandState(action.setStandState.standState);
             break;
+        }
+    }
+}
+
+void CreatureEventAI::CombatMovement(bool on, CreatureEventAI_Action const& action)
+{
+    //Allow movement (create new targeted movement gen only if idle)
+    if (on)
+    {
+        Unit* victim = m_creature->getVictim();
+        if (m_creature->isInCombat() && victim)
+        {
+            if (action.combat_movement.melee)
+            {
+                m_creature->addUnitState(UNIT_STAT_MELEE_ATTACKING);
+                m_creature->SendMeleeAttackStart(victim);
+            }
+            if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
+                m_creature->GetMotionMaster()->MoveChase(victim, m_attackDistance, m_attackAngle); // Targeted movement generator will start melee automatically, no need to send it explicitly
+        }
+    }
+    else
+    {
+        if (m_creature->isInCombat())
+        {
+            Unit* victim = m_creature->getVictim();
+            if (action.combat_movement.melee && victim)
+            {
+                m_creature->clearUnitState(UNIT_STAT_MELEE_ATTACKING);
+                m_creature->SendMeleeAttackStop(victim);
+            }
+            if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
+            {
+                m_creature->GetMotionMaster()->MovementExpired();
+                m_creature->GetMotionMaster()->Clear(true);
+                m_creature->StopMoving();
+                m_creature->GetMotionMaster()->MoveIdle();
+            }
         }
     }
 }

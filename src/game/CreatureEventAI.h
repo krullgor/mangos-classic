@@ -647,6 +647,7 @@ class MANGOS_DLL_SPEC CreatureEventAI : public CreatureAI
         Unit* DoSelectLowestHpFriendly(float range, uint32 MinHPDiff);
         void DoFindFriendlyMissingBuff(std::list<Creature*>& _list, float range, uint32 spellid);
         void DoFindFriendlyCC(std::list<Creature*>& _list, float range);
+        void CombatMovement(bool on, CreatureEventAI_Action const& action);
 
     protected:
         uint32 m_EventUpdateTime;                           // Time between event updates

@@ -70,6 +70,9 @@ CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry* pSpell, 
 
             if (fMinRange && fDistance < fMinRange)
                 return CAST_FAIL_TOO_CLOSE;
+
+            if (!m_creature->IsWithinLOSInMap(pTarget))
+                return CAST_FAIL_NO_LOS;
         }
 
         return CAST_OK;
