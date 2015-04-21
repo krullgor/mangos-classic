@@ -199,6 +199,7 @@ Unit::Unit() :
     // m_removeAuraTimer = 4;
     m_spellAuraHoldersUpdateIterator = m_spellAuraHolders.end();
     m_AuraFlags = 0;
+    m_negativeAuraCount = 0;
 
     m_Visibility = VISIBILITY_ON;
     m_AINotifyScheduled = false;
@@ -3451,6 +3452,46 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder* holder)
         }
     }
 
+    if (!holder->IsPositive())
+    {
+        error_log("current negative auras applied: %i", m_negativeAuraCount);
+        if (m_negativeAuraCount > 15)
+        {
+            // take out lowest spell
+            SpellAuraHolder* weakestHolder = NULL;
+            int8 weakestCategory = 0;
+
+            SpellAuraHolderMap auraMap = GetSpellAuraHolderMap();
+            for (SpellAuraHolderMap::iterator iter = auraMap.begin(); iter != auraMap.end(); ++iter)
+            {
+                SpellAuraHolder* foundHolder = iter->second;
+
+                if (foundHolder->IsPositive())
+                    continue;
+
+                int8 category = foundHolder->GetNegativeAuraCategory();
+                if (!weakestHolder || category < weakestCategory || (category == weakestCategory && weakestHolder->GetAuraDuration() > foundHolder->GetAuraDuration()))
+                {
+                    weakestHolder = foundHolder;
+                    weakestCategory = category;
+                }
+            }
+
+            if (weakestHolder && weakestCategory <= holder->GetNegativeAuraCategory())
+            {
+                error_log("deleting aura %s of category %i, remaining duration: %i", weakestHolder->GetSpellProto()->SpellName[sWorld.GetDefaultDbcLocale()], weakestCategory, weakestHolder->GetAuraDuration());
+                RemoveSpellAuraHolder(weakestHolder);
+            }
+            else
+            {
+                error_log("could not find an aura to overwrite, skipping application");
+                delete holder;
+                return false;
+            }
+        }
+        m_negativeAuraCount++;
+    }
+
     // add aura, register in lists and arrays
     holder->_AddSpellAuraHolder();
     m_spellAuraHolders.insert(SpellAuraHolderMap::value_type(holder->GetId(), holder));
@@ -3947,6 +3988,11 @@ void Unit::RemoveNotOwnTrackedTargetAuras()
 
 void Unit::RemoveSpellAuraHolder(SpellAuraHolder* holder, AuraRemoveMode mode)
 {
+    if (!holder->IsPositive())
+    {
+        m_negativeAuraCount--;
+        error_log("current negative auras applied: %i", m_negativeAuraCount);
+    }
     // Statue unsummoned at holder remove
     SpellEntry const* AurSpellInfo = holder->GetSpellProto();
     Totem* statue = NULL;

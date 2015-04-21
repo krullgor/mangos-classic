@@ -5522,3 +5522,46 @@ void SpellAuraHolder::SendAuraDurationForCaster(Player* caster)
 {
     // [-ZERO] Feature doesn't exist in 1.x.
 }
+
+int8 SpellAuraHolder::GetNegativeAuraCategory(){
+
+    int8 category = 0;
+    for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        if (!m_auras[i])
+            continue;
+
+        // m_auraname can be modified to SPELL_AURA_NONE for area auras, use original
+        AuraType aurNameReal = AuraType(GetSpellProto()->EffectApplyAuraName[i]);
+
+        switch (aurNameReal)
+        {
+            case SPELL_AURA_MOD_TAUNT:
+            case SPELL_AURA_MOD_FEAR:
+            case SPELL_AURA_MOD_POSSESS:
+            case SPELL_AURA_MOD_CONFUSE:
+            case SPELL_AURA_MOD_ROOT:
+            case SPELL_AURA_TRANSFORM:
+            case SPELL_AURA_SCHOOL_IMMUNITY:
+                return 3; //taunt and interruptable cc
+            case SPELL_AURA_MOD_STUN:
+            case SPELL_AURA_RANGED_ATTACK_POWER_ATTACKER_BONUS:
+            case SPELL_AURA_MOD_DAMAGE_TAKEN:
+            case SPELL_AURA_MOD_DAMAGE_DONE:
+            case SPELL_AURA_MOD_RESISTANCE:
+            case SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN:
+            case SPELL_AURA_MOD_CASTING_SPEED_NOT_STACK:
+            case SPELL_AURA_MOD_SILENCE:
+                if (category < 2)
+                    category = 2;//stun weakenings and silence
+                break;
+            case SPELL_AURA_MOD_DECREASE_SPEED:
+                if (category < 1)
+                    category = 1;//slow
+                break;
+            default: // dots etc
+                break;
+            }
+    }
+    return category;
+}

@@ -1390,6 +1390,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
             return m_spellAuraHolders.find(spellId) != m_spellAuraHolders.end();
         }
 
+        int8 GetNegativeAuraCount(){ return m_negativeAuraCount; }
+
         virtual bool HasSpell(uint32 /*spellID*/) const { return false; }
 
         bool HasStealthAura()      const { return HasAuraType(SPELL_AURA_MOD_STEALTH); }
@@ -1889,6 +1891,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         SpellAuraHolderMap::iterator m_spellAuraHoldersUpdateIterator; // != end() in Unit::m_spellAuraHolders update and point to next element
         AuraList m_deletedAuras;                            // auras removed while in ApplyModifier and waiting deleted
         SpellAuraHolderList m_deletedHolders;
+        int8 m_negativeAuraCount;
 
         // Store Auras for which the target must be tracked
         TrackedAuraTargetMap m_trackedAuraTargets[MAX_TRACKED_AURA_TYPES];
